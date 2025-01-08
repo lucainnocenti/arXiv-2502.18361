@@ -1,4 +1,7 @@
 # imports
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 sns.set_theme()
 import plotly
@@ -56,7 +59,12 @@ def train_and_test_QELM_on_doubles(data_dir, which_states_train, which_states_te
     return qelm
 
 
-def plot_paulis_scatter(trained_qelm):
+def plot_paulis_scatter(trained_qelm, plotly=True):
+
+    if not plotly:
+        plot_paulis_scatter_noplotly(trained_qelm)
+        return
+
     labels = two_qubit_paulis_labels
     fig = sp.make_subplots(rows=4, cols=4,
                            subplot_titles=[f'${labels[i]}$' for i in range(16)],
@@ -97,3 +105,33 @@ def plot_paulis_scatter(trained_qelm):
         width=600
     )
     fig.show()
+
+def plot_paulis_scatter_noplotly(trained_qelm):
+    labels = two_qubit_paulis_labels
+    fig, axs = plt.subplots(4, 4, figsize=(10, 10), sharex=True, sharey=True)
+    for i in range(16):
+        if trained_qelm.train_dict is not None:
+            axs[i // 4, i % 4].scatter(
+                trained_qelm.train_dict['expvals'][i],
+                trained_qelm.train_predictions[i],
+                color='red', label='train', s=12
+            )
+        if trained_qelm.test_dict is not None:
+            axs[i // 4, i % 4].scatter(
+                trained_qelm.test_dict['expvals'][i],
+                trained_qelm.test_predictions[i],
+                color='green', label='test', s=12
+            )
+        axs[i // 4, i % 4].plot([-1.1, 1.1], [-1.1, 1.1], 'k--')
+        axs[i // 4, i % 4].text(0.5, 0.9, f'${labels[i]}$', transform=axs[i // 4, i % 4].transAxes, 
+                                horizontalalignment='center', fontsize=12, bbox=dict(facecolor='white', alpha=0.8))
+        axs[i // 4, i % 4].set_xlim([-1.1, 1.1])
+        axs[i // 4, i % 4].set_ylim([-1.1, 1.1])
+        if i // 4 == 3:
+            axs[i // 4, i % 4].set_xlabel('true')
+        if i % 4 == 0:
+            axs[i // 4, i % 4].set_ylabel('predicted')
+    handles, labels = axs[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper left')
+    plt.tight_layout()
+    plt.show()
