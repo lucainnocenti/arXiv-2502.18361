@@ -1,0 +1,12 @@
+# Exclude everything in 'experimental data' subfolders
+/experimental data/**
+
+# Allow only 'all_data.pickle' files in any subfolder
+!experimental data/**/
+!experimental data/**/all_data.pickle
+
+# exclude standard python cache files in the python subfolder
+/python/__pycache__/
+
+# exclude mathematica nb files from tracking
+*.nb
