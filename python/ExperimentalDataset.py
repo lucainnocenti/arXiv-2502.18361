@@ -103,9 +103,13 @@ def load_angles_from_raw_file(fullpath: str) -> dict:
     for col in data.columns:
         if col.startswith('Angle_') and col != 'Angle_pump':
             data_dict[col[6:]] = data[col][0] * np.pi / 180
-    # if there's an 'Angle_pump' column, use it to determine label (this happens in the 30-09 dataset)
+    # if there's an 'Angle_pump' column, use it to determine label (this happens in the 2024-09-30 dataset)
+    # I need the exception for the 2025-01-09 dataset b/c there we have Angle_pump (set to 5 for separables), but only one reference state
     if 'Angle_pump' in data.columns:
         # save angle pump (corresponds to label)
+        if data['Angle_pump'][0] == 5:
+            data_dict['label'] = 'sep'
+            # why is Angle_pump=5 and not 0 for separable states, in the 2025-01-09 dataset? NO IDEA!
         if data['Angle_pump'][0] == 0:
             data_dict['label'] = 'sep1'
         elif data['Angle_pump'][0] == 45:
@@ -120,7 +124,6 @@ def load_angles_from_raw_file(fullpath: str) -> dict:
             data_dict['label'] = 'ent'
         else:
             raise ValueError('Could not determine label from the filename')
-
     return data_dict
 
 def load_angles_from_raw_files(directory: str) -> pd.DataFrame:
@@ -153,11 +156,16 @@ class ExperimentalDataset:
         dataset_name : str
             The name of the dataset.
         date : str
-            The date of the dataset (eg 30-09, 20-09, etc).
+            The date of the dataset (eg 2024-09-30, 2024-09-20, etc).
         states_data : pd.DataFrame
             The dataframe containing the states for each label.
         counts : np.ndarray
             The counts (doubles) for each state.
+            Note that this connects with the elements of states_data via the state_id values (loaded from the raw data file names).
+            In most datasets, each state is uniquely identified by its state id, which makes this easy.
+            
+            The 2025-01-09 dataset is an exception because there the state ids go from 0 to 149 for both separable and entangled states.
+            In this case we thus manually add 150 to the state ids of entangled states, to make them unique.
         singles_1 : np.ndarray
             The singles for the first walker (only if raw data is available).
         singles_2 : np.ndarray
@@ -181,19 +189,20 @@ class ExperimentalDataset:
         else:
             raise ValueError('The given path does not have the form "dati dd-mm"')
         # log
+        self.stfu = stfu
         if not stfu:
             display(Markdown(f'**Loading dataset**: \'*{self.dataset_name}*\''))
 
         # store labels corresponding to each set of states (one label per reference input state)
         # and also define the corresponding reference states (these are used to compute the input states from the angles)
-        # ---------- NOTE: CHECK THAT THE REFERENCE STATE FOR 08-11 IS CORRECT ------------
-        if self.date in ['20-09', '02-09', '08-11']:
+        # ---------- NOTE: CHECK THAT THE REFERENCE STATE FOR 2024-11-08 IS CORRECT ------------
+        if self.date in ['2024-09-20', '2024-09-02', '2024-11-08', '2025-01-09']:
             self.labels = ['sep', 'ent']
             self.reference_states = {
                 'sep': qutip.Qobj([1, 1, -1, -1], dims=[[2, 2], [1, 1]]).unit(),
                 'ent': qutip.Qobj([1, 0, 0, -1], dims=[[2, 2], [1, 1]]).unit()
             }
-        elif self.date in ['30-09']:
+        elif self.date in ['2024-09-30']:
             self.labels = ['sep1', 'sep2', 'ent']
             self.reference_states = {
                 'sep1': qutip.Qobj([1, 1, -1, -1], dims=[[2, 2], [1, 1]]).unit(),
@@ -215,9 +224,14 @@ class ExperimentalDataset:
                     self.singles_2 = all_data[3]
         elif 'Ripetizione_0' in os.listdir(self.path):
             if not stfu:
-                display(Markdown(f'***Raw data detected. Loading from there...***'))
+                display(Markdown(f'***Raw data folders detected. Loading from there...***'))
+            # states_data is first created here
             self._load_angles_data_from_raw_files()
+            if not stfu:
+                display(Markdown(f'***Generate states from angles...***'))
             self._load_states()
+            if not stfu:
+                display(Markdown(f'***Loading raw counts...***'))
             self._load_raw_counts()
 
         else:
@@ -229,13 +243,7 @@ class ExperimentalDataset:
             self._load_states()
             # now load the counts
             self._load_counts()
-
-        # When loading angles and counts, we purposely do not reset the index of the dataframes
-        # this is because we want to keep the index as a unique identifier for each state,
-        # which we need to connect the states with the counts more easily
-        # With this approach, once a rep number and label are specified, the corresponding index can
-        # be uniquely associated to the one in the angles dataset with the same label
-        
+       
 
     
     def _find_angles_files(self):
@@ -260,9 +268,9 @@ class ExperimentalDataset:
         # print the angles files found
         display(Markdown(f'**Angles files found**: {self.angles_datafiles}'))
         # load the angles data from the files
-        if self.date in ['20-09', '02-09']:
+        if self.date in ['2024-09-20', '2024-09-02']:
             self.angles_labels = ['QWP', 'HWP']
-            # if the date is either 20-09 or 02-09, the two walker use the same angle
+            # if the date is either 2024-09-20 or 2024-09-02, the two walker use the same angle
             df_sep = pd.DataFrame({
                 'QWP': load_angles_from_file(self.path, 'Angoli_QWP_sep.txt'),
                 'HWP': load_angles_from_file(self.path, 'Angoli_HWP_sep.txt')
@@ -275,9 +283,9 @@ class ExperimentalDataset:
             })
             df_ent['label'] = 'ent'
 
-        elif self.date in ['30-09']:
+        elif self.date in ['2024-09-30']:
             self.angles_labels = ['QWP1', 'QWP2', 'HWP1', 'HWP2']
-            # 30-09 uses different angles for the two walkers
+            # 2024-09-30 uses different angles for the two walkers
             # NOTE: here we also have two possible reference separable states
             #       so each angle for separable states appears twice, once per reference state.
             #       We mark this using as labels 'sep1' and 'sep2', corresponding to the two reference states
@@ -297,9 +305,9 @@ class ExperimentalDataset:
             })
             df_ent['label'] = 'ent'
 
-        elif self.date in ['08-11']:
+        elif self.date in ['2024-11-08', '2025-01-09']:
             self.angles_labels = ['QWP1', 'QWP2', 'HWP1', 'HWP2']
-            # 08-11 uses different angles for the two walkers
+            # 2024-11-08 uses different angles for the two walkers
             # but only one reference state for separable states
             df_sep = pd.DataFrame({
                 'QWP1': load_angles_from_file(self.path, 'Angoli_QWP1_sep.txt'),
@@ -339,10 +347,10 @@ class ExperimentalDataset:
         # goal is to have a dataframe with angles and states for each label
         list_of_states = []
         for idx, row in self.states_data.iterrows():
-            if self.date in ['20-09', '02-09']:
+            if self.date in ['2024-09-20', '2024-09-02']:
                 unitary_walker1 = local_polarization_unitary(row['QWP'], row['HWP'])
                 unitary_walker2 = local_polarization_unitary(row['QWP'], row['HWP'])
-            elif self.date in ['30-09', '08-11']:
+            elif self.date in ['2024-09-30', '2024-11-08', '2025-01-09']:
                 unitary_walker1 = local_polarization_unitary(row['QWP1'], row['HWP1'])
                 unitary_walker2 = local_polarization_unitary(row['QWP2'], row['HWP2'])
             full_unitary = np.kron(unitary_walker1, unitary_walker2)
@@ -368,7 +376,7 @@ class ExperimentalDataset:
         # load data from the files. Each file contains a list of integers, written in scientific notation.
         # Each row contains 5 numbers. Each set of 5 consecutive rows (25 numbers) corresponds to a counts vector
         # Each of these is stored as an element of the resulting array.
-        # We then store all the loaded counts in the self.doubles array:
+        # We then store all the loaded counts in the self.counts array:
         # ---- the first index corresponds to the state_id,
         # ---- the second index corresponds to the repetition number
         # ---- the third index corresponds to the counts vector
@@ -377,7 +385,7 @@ class ExperimentalDataset:
         # the len(counts_files) // 2 is because we have two counts files per repetition (one for sep and one for ent); it's a pretty ugly solution ngl
         self.counts = np.zeros((self.states_data.shape[0], 25, len(counts_files) // 2))
         # each counts file contains the counts for a specific label (ent or sep) and repetition
-        # For the 30-09 dataset, the sep counts files contain the counts for both sep1 and sep2
+        # For the 2024-09-30 dataset, the sep counts files contain the counts for both sep1 and sep2
         for file in counts_files:
             label, rep = extract_info_from_filename(file)
             with open(os.path.join(self.path, file), 'r') as f:
@@ -385,7 +393,7 @@ class ExperimentalDataset:
                 counts = np.asarray([int(float(line)) for line in lines])
                 counts = counts.reshape(-1, 25)
                 # extract the indices of self.states_data that correspond to the given label
-                # note that for the 30-09 dataset, for separables, the file just says 'sep', but states_data contains
+                # note that for the 2024-09-30 dataset, for separables, the file just says 'sep', but states_data contains
                 # both sep1 and sep2. This is why we just take the labels that contain `label` here
                 indices = self.states_data[self.states_data['label'].str.startswith(label)]['state_id']
                 # counts files are enumerated starting from 1 not 0, hence the -1
@@ -407,6 +415,12 @@ class ExperimentalDataset:
         # the various repetition folders actually all contain the same angles data, so we just use the first one
         state_data_sep = load_angles_from_raw_files(os.path.join(self.path, repetition_folders[0], "Separabili"))
         state_data_ent = load_angles_from_raw_files(os.path.join(self.path, repetition_folders[0], "Entangled"))
+
+        if self.date == '2025-01-09':
+            # for the 2025-01-09 data, the state_ids are done differently: separable and entangled states each have a set of ids going from 0 to 150
+            # this means we can't use state_id as a unique identifier, which breaks stuff.
+            # To fix it, we manually add to the entangled states 150 to their state_id
+            state_data_ent['state_id'] += 150
         self.states_data = pd.concat([state_data_sep, state_data_ent], ignore_index=True)
 
         return self
@@ -414,6 +428,7 @@ class ExperimentalDataset:
     def _load_raw_counts(self):
         """Load the raw counts data from the pickle files.
         
+        This takes the data from the folders having name "Ripetizione_X", and only those. Also take case that those are numbered from 0 onwards otherwise shit might break.
         The counts data is stored in the arrays self.counts, self.singles_1, and self.singles_2.
         Each of these is a numpy array of shape num_states x 25 x num_repetitions.
         The state_id is used to connect these counts data with the stuff in self.states_data.
@@ -429,15 +444,20 @@ class ExperimentalDataset:
         self.singles_1 = np.zeros((self.states_data.shape[0], 25, len(repetition_folders)))
         self.singles_2 = np.zeros((self.states_data.shape[0], 25, len(repetition_folders)))
         for idx, folder in enumerate(repetition_folders):
-            # load data for separable states
             raw_data_sep = load_raw_counts_from_files(os.path.join(self.path, folder, "Separabili", "Raw"))
             raw_data_ent = load_raw_counts_from_files(os.path.join(self.path, folder, "Entangled", "Raw"))
+            # for the 2025-01-09 data, the state_ids are done differently: separable and entangled states each have a set of ids going from 0 to 150
+            # this means we can't use state_id as a unique identifier, which breaks stuff.
+            # To fix it, we manually add to the entangled states 150 to their state_id
+            if self.date == '2025-01-09':
+                raw_data_ent['state_id'] += 150
             raw_data = pd.concat([raw_data_sep, raw_data_ent], ignore_index=True)
             self.counts[raw_data['state_id'].values, :, idx] = np.stack(list(raw_data['doubles'].values))
             self.singles_1[raw_data['state_id'].values, :, idx] = np.stack(list(raw_data['singles_1'].values))
             self.singles_2[raw_data['state_id'].values, :, idx] = np.stack(list(raw_data['singles_2'].values))
-            display(Markdown(f'***Loaded raw data from folder*** *`{folder}`*'))
-        
+            if not self.stfu:
+                display(Markdown(f'***Loaded raw data from folder*** *`{folder}`*'))
+            
         return self
 
 

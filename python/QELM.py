@@ -100,3 +100,5 @@ class QELM:
         if display_results:
             display(Markdown(f"***Train MSE***: {self.train_MSE}"))
             display(Markdown(f"***Test MSE***: {self.test_MSE}"))
+        
+        return self
