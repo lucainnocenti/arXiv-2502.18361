@@ -16,9 +16,10 @@ two_qubit_paulis_labels = ['I_1I_2', 'I_1X_2', 'I_1Y_2', 'I_1Z_2', 'X_1I_2', 'X_
 
 def train_and_test_QELM_on_doubles(data_dir, which_states_train, which_states_test,
                                    target_observables, mean_or_sum='mean',
-                                   which_reps_train='all', which_reps_test='all'):
+                                   which_reps_train='all', which_reps_test='all',
+                                   stfu=True):
     # extract data from experimental files
-    experimentalDataset = ExperimentalDataset(data_dir)
+    experimentalDataset = ExperimentalDataset(data_dir, stfu=stfu)
     # merge repetitions (either summing or taking the average over the repetitions)
     # experimentalDataset.merge_repetitions(mean_or_sum=mean_or_sum)
     train_dict = experimentalDataset.get_training_dataset(
