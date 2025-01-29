@@ -580,7 +580,8 @@ class ExperimentalDataset:
         which_states: str | pd.Series | np.ndarray = 'all',
         merge_reps: str | bool = False,
         target_observables=None,
-        which_counts='doubles'
+        which_counts='doubles',
+        save_states : bool = False
     ) -> dict:
         """
         Get the data needed for training a model.
@@ -598,6 +599,8 @@ class ExperimentalDataset:
         which_counts : str, optional
             Which counts to use. Can be 'doubles', 'singles_1', or 'singles_2'.
             Default is 'doubles'.
+        save_states : bool, optional
+            Whether to also save the states into the generated dictionary. Default is False.
 
         Returns
         -------
@@ -621,7 +624,7 @@ class ExperimentalDataset:
         elif which_counts == 'singles_2':
             counts = self.singles_2
 
-        states_data = self.states_data[['state_id', 'label', 'expvals']].copy(deep=True)
+        states_data = self.states_data[['state_id', 'label', 'expvals', 'state']].copy(deep=True)
 
         if isinstance(which_states, str):
             if which_states == 'all':
@@ -645,4 +648,8 @@ class ExperimentalDataset:
             'counts': counts[good_indices].T,
             'expvals': np.stack(list(states_data['expvals'].values)).T
         }
+        if save_states:
+            # this produces a matrix of size num_states x dim_state
+            dict_data['states'] = np.stack(list(states_data['state'].values))
+
         return dict_data
