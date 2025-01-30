@@ -209,6 +209,12 @@ class ExperimentalDataset:
                 'sep2': qutip.Qobj([1, -1, 1, -1], dims=[[2, 2], [1, 1]]).unit(),
                 'ent': qutip.Qobj([0, 1, -1, 0], dims=[[2, 2], [1, 1]]).unit()
             }
+        elif self.date in ['2025-01-21']:
+            self.labels = ['sep', 'ent']
+            self.reference_states = {
+                'sep': qutip.Qobj([1, 1, 1, 1], dims=[[2, 2], [1, 1]]).unit(),
+                'ent': qutip.Qobj([1, 0, 0, -1], dims=[[2, 2], [1, 1]]).unit()
+            }
 
         # if an all_data file exists, we just use that one:
         if 'all_data.pickle' in os.listdir(self.path) and not force_reload:
@@ -305,7 +311,8 @@ class ExperimentalDataset:
             })
             df_ent['label'] = 'ent'
 
-        elif self.date in ['2024-11-08', '2025-01-09']:
+        elif self.date in ['2024-11-08', '2025-01-09', '2025-01-21']:
+            # 2025-01-21 actually uses identical angles, but saves them as two separate folders (#@%@#@!)
             self.angles_labels = ['QWP1', 'QWP2', 'HWP1', 'HWP2']
             # 2024-11-08 uses different angles for the two walkers
             # but only one reference state for separable states
@@ -350,7 +357,8 @@ class ExperimentalDataset:
             if self.date in ['2024-09-20', '2024-09-02']:
                 unitary_walker1 = local_polarization_unitary(row['QWP'], row['HWP'])
                 unitary_walker2 = local_polarization_unitary(row['QWP'], row['HWP'])
-            elif self.date in ['2024-09-30', '2024-11-08', '2025-01-09']:
+            elif self.date in ['2024-09-30', '2024-11-08', '2025-01-09', '2025-01-21']:
+                # the 2025-01-21 actually uses identical angles, but saves them as two separate folders (#@%@#@!)
                 unitary_walker1 = local_polarization_unitary(row['QWP1'], row['HWP1'])
                 unitary_walker2 = local_polarization_unitary(row['QWP2'], row['HWP2'])
             full_unitary = np.kron(unitary_walker1, unitary_walker2)
@@ -416,7 +424,7 @@ class ExperimentalDataset:
         state_data_sep = load_angles_from_raw_files(os.path.join(self.path, repetition_folders[0], "Separabili"))
         state_data_ent = load_angles_from_raw_files(os.path.join(self.path, repetition_folders[0], "Entangled"))
 
-        if self.date == '2025-01-09':
+        if self.date in ['2025-01-09', '2025-01-21']:
             # for the 2025-01-09 data, the state_ids are done differently: separable and entangled states each have a set of ids going from 0 to 150
             # this means we can't use state_id as a unique identifier, which breaks stuff.
             # To fix it, we manually add to the entangled states 150 to their state_id
@@ -449,7 +457,7 @@ class ExperimentalDataset:
             # for the 2025-01-09 data, the state_ids are done differently: separable and entangled states each have a set of ids going from 0 to 150
             # this means we can't use state_id as a unique identifier, which breaks stuff.
             # To fix it, we manually add to the entangled states 150 to their state_id
-            if self.date == '2025-01-09':
+            if self.date in ['2025-01-09', '2025-01-21']:
                 raw_data_ent['state_id'] += 150
             raw_data = pd.concat([raw_data_sep, raw_data_ent], ignore_index=True)
             self.counts[raw_data['state_id'].values, :, idx] = np.stack(list(raw_data['doubles'].values))
@@ -569,6 +577,8 @@ class ExperimentalDataset:
         """
         expvals = []
         for _, row in self.states_data.iterrows():
+            if row['label'] == 'ent':
+                pass
             state = qutip.Qobj(row['state'], dims=[[2, 2], [1, 1]])
             expvals.append([qutip.expect(obs, state) for obs in target_observables])
         # add the expectation values to the states_data dataframe
