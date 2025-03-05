@@ -196,7 +196,7 @@ class ExperimentalDataset:
         # store labels corresponding to each set of states (one label per reference input state)
         # and also define the corresponding reference states (these are used to compute the input states from the angles)
         # ---------- NOTE: CHECK THAT THE REFERENCE STATE FOR 2024-11-08 IS CORRECT ------------
-        if self.date in ['2024-09-20', '2024-09-02', '2024-11-08', '2025-01-09']:
+        if self.date in ['2024-09-02', '2024-09-20', '2024-11-08', '2025-01-09']:
             self.labels = ['sep', 'ent']
             self.reference_states = {
                 'sep': qutip.Qobj([1, 1, -1, -1], dims=[[2, 2], [1, 1]]).unit(),
@@ -214,6 +214,16 @@ class ExperimentalDataset:
             self.reference_states = {
                 'sep': qutip.Qobj([1, 1, 1, 1], dims=[[2, 2], [1, 1]]).unit(),
                 'ent': qutip.Qobj([1, 0, 0, -1], dims=[[2, 2], [1, 1]]).unit()
+            }
+        elif self.date in ['2024-12-12']:
+            self.labels = ['sep', 'ent']
+            self.reference_states = {
+                # these are the ref states which work well
+                'sep': qutip.Qobj([1, -1, -1, 1], dims=[[2, 2], [1, 1]]).unit(),
+                'ent': qutip.Qobj([1, 0, 0, 1], dims=[[2, 2], [1, 1]]).unit()
+                # these are the ref states with work shit but are supposedly "right"
+                # 'sep': qutip.Qobj([1, -1, 1, -1], dims=[[2, 2], [1, 1]]).unit(),
+                # 'ent': qutip.Qobj([1, 0, 0, -1], dims=[[2, 2], [1, 1]]).unit()
             }
 
         # if an all_data file exists, we just use that one:
@@ -311,7 +321,7 @@ class ExperimentalDataset:
             })
             df_ent['label'] = 'ent'
 
-        elif self.date in ['2024-11-08', '2025-01-09', '2025-01-21']:
+        elif self.date in ['2024-11-08', '2024-12-12', '2025-01-09', '2025-01-21']:
             # 2025-01-21 actually uses identical angles, but saves them as two separate folders (#@%@#@!)
             self.angles_labels = ['QWP1', 'QWP2', 'HWP1', 'HWP2']
             # 2024-11-08 uses different angles for the two walkers
@@ -357,7 +367,7 @@ class ExperimentalDataset:
             if self.date in ['2024-09-20', '2024-09-02']:
                 unitary_walker1 = local_polarization_unitary(row['QWP'], row['HWP'])
                 unitary_walker2 = local_polarization_unitary(row['QWP'], row['HWP'])
-            elif self.date in ['2024-09-30', '2024-11-08', '2025-01-09', '2025-01-21']:
+            elif self.date in ['2024-09-30', '2024-11-08', '2024-12-12', '2025-01-09', '2025-01-21']:
                 # the 2025-01-21 actually uses identical angles, but saves them as two separate folders (#@%@#@!)
                 unitary_walker1 = local_polarization_unitary(row['QWP1'], row['HWP1'])
                 unitary_walker2 = local_polarization_unitary(row['QWP2'], row['HWP2'])
@@ -424,7 +434,7 @@ class ExperimentalDataset:
         state_data_sep = load_angles_from_raw_files(os.path.join(self.path, repetition_folders[0], "Separabili"))
         state_data_ent = load_angles_from_raw_files(os.path.join(self.path, repetition_folders[0], "Entangled"))
 
-        if self.date in ['2025-01-09', '2025-01-21']:
+        if self.date in ['2024-12-12', '2025-01-09', '2025-01-21']:
             # for the 2025-01-09 data, the state_ids are done differently: separable and entangled states each have a set of ids going from 0 to 150
             # this means we can't use state_id as a unique identifier, which breaks stuff.
             # To fix it, we manually add to the entangled states 150 to their state_id
@@ -457,7 +467,7 @@ class ExperimentalDataset:
             # for the 2025-01-09 data, the state_ids are done differently: separable and entangled states each have a set of ids going from 0 to 150
             # this means we can't use state_id as a unique identifier, which breaks stuff.
             # To fix it, we manually add to the entangled states 150 to their state_id
-            if self.date in ['2025-01-09', '2025-01-21']:
+            if self.date in ['2024-12-12', '2025-01-09', '2025-01-21']:
                 raw_data_ent['state_id'] += 150
             raw_data = pd.concat([raw_data_sep, raw_data_ent], ignore_index=True)
             self.counts[raw_data['state_id'].values, :, idx] = np.stack(list(raw_data['doubles'].values))
