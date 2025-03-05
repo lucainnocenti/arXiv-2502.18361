@@ -79,7 +79,8 @@ qwProjectedIsometry[{varphip_, thetap_}, {alpha2_, delta2_ : Pi}, {varphi2_, the
 
 
 
-experimentalDoubleQwEvolution = KroneckerProduct[
+(* THIS IS THE "OLD" MODEL, WITH zeta2 and phi2 switched (wrt the optimal one) *)
+experimentalDoubleQwEvolutionBad = KroneckerProduct[
     With[{
             alpha1 = 19*Pi/180, delta1 = Pi/2,
             alpha2 = 77*Pi/180, delta2 = Pi,
@@ -101,6 +102,31 @@ experimentalDoubleQwEvolution = KroneckerProduct[
         qwProjectedIsometry[{varphip, thetap}, {alpha2, delta2}, {varphi2, theta2, zeta2}, {alpha1, delta1}]
     ]
 ] // Chop;
+
+
+experimentalDoubleQwEvolution = KroneckerProduct[
+    With[{
+            alpha1 = 19*Pi/180, delta1 = Pi/2,
+            alpha2 = 77*Pi/180, delta2 = Pi,
+            zeta2 = 1.0070977275570985,
+            varphi2 = 2.908160255954825,
+            theta2 = 1.5570696348907915,
+            thetap = 0.7853981644358207, varphip = 0.6904379401618504
+        },
+        qwProjectedIsometry[{varphip, thetap}, {alpha2, delta2}, {varphi2, theta2, zeta2}, {alpha1, delta1}]
+    ],
+    With[{
+            alpha1 = 336*Pi/180, delta1 = Pi/2,
+            alpha2 = 163*Pi/180, delta2 = Pi,
+            zeta2 = 1.095755783171672,
+            varphi2 = 2.89289820797498,
+            theta2 = 1.5937676381596888,
+            thetap = 0.7853981643272621, varphip = 0.6567152340642829
+        },
+        qwProjectedIsometry[{varphip, thetap}, {alpha2, delta2}, {varphi2, theta2, zeta2}, {alpha1, delta1}]
+    ]
+] // Chop;
+
 
 
 experimentalDoubleQwEvolutionOrthogonalProjection = KroneckerProduct[
