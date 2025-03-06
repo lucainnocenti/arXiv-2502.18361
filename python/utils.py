@@ -17,6 +17,7 @@ two_qubit_paulis_labels = ['I_1I_2', 'I_1X_2', 'I_1Y_2', 'I_1Z_2', 'X_1I_2', 'X_
 def train_and_test_QELM_on_doubles(data_dir, which_states_train, which_states_test,
                                    target_observables, mean_or_sum='mean',
                                    which_reps_train='all', which_reps_test='all',
+                                   normalize_counts=False,
                                    stfu=True, train_options={}):
     # extract data from experimental files
     experimentalDataset = ExperimentalDataset(data_dir, stfu=stfu)
@@ -54,6 +55,10 @@ def train_and_test_QELM_on_doubles(data_dir, which_states_train, which_states_te
     elif mean_or_sum == 'sum':
         train_dict['counts'] = train_dict['counts'].sum(axis=0)
         test_dict['counts'] = test_dict['counts'].sum(axis=0)
+    # normalize the counts if requested
+    if normalize_counts:
+        train_dict['counts'] = train_dict['counts'] / train_dict['counts'].sum(axis=0)
+        test_dict['counts'] = test_dict['counts'] / test_dict['counts'].sum(axis=0)
     # create and train the QELM
     qelm = QELM.QELM(train_dict=train_dict, test_dict=test_dict, train_options=train_options)
     qelm.compute_MSE(display_results=False)
